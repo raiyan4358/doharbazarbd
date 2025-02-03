@@ -1,35 +1,62 @@
-// Admin credentials
+// Admin credentials and store phone
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin123';
-const STORE_PHONE = '+8801234567890'; // Replace with your actual phone number
+const STORE_PHONE = '+8801234567890';
 
-// Initialize local storage with default data if empty
-function initializeLocalStorage() {
-    if (!localStorage.getItem('categories')) {
-        localStorage.setItem('categories', JSON.stringify([]));
+// Initial data (this will persist until admin deletes)
+let categories = ['Groceries', 'Electronics', 'Fashion', 'Home & Kitchen'];
+let products = [
+    {
+        id: 1,
+        name: 'Fresh Rice',
+        price: 65,
+        category: 'Groceries',
+        image: 'https://via.placeholder.com/300x200?text=Rice',
+        offer: '10% off'
+    },
+    {
+        id: 2,
+        name: 'Smart Watch',
+        price: 2500,
+        category: 'Electronics',
+        image: 'https://via.placeholder.com/300x200?text=Smart+Watch',
+        offer: 'Free Delivery'
+    },
+    {
+        id: 3,
+        name: 'Cotton T-Shirt',
+        price: 450,
+        category: 'Fashion',
+        image: 'https://via.placeholder.com/300x200?text=T-Shirt',
+        offer: 'Buy 2 Get 1 Free'
+    },
+    {
+        id: 4,
+        name: 'Non-Stick Pan',
+        price: 850,
+        category: 'Home & Kitchen',
+        image: 'https://via.placeholder.com/300x200?text=Pan',
+        offer: '15% off'
     }
-    if (!localStorage.getItem('products')) {
-        localStorage.setItem('products', JSON.stringify([]));
-    }
-}
+];
 
-// Login functionality
+// Admin Authentication
 function login(event) {
     event.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    if (username === 'admin' && password === 'admin123') {
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         sessionStorage.setItem('isAdmin', 'true');
         document.querySelector('.admin-panel').style.display = 'block';
         document.getElementById('loginBtn').textContent = 'Logout';
         document.getElementById('loginBtn').onclick = logout;
         hideLoginForm();
-        window.store.showToast('Logged in as admin');
-        window.store.displayProducts();
-        window.store.displayCategories();
+        showToast('Logged in as admin');
+        displayCategories();
+        displayProducts();
     } else {
-        window.store.showToast('Invalid credentials');
+        showToast('Invalid credentials');
     }
 }
 
@@ -38,9 +65,9 @@ function logout() {
     document.querySelector('.admin-panel').style.display = 'none';
     document.getElementById('loginBtn').textContent = 'Admin Login';
     document.getElementById('loginBtn').onclick = showLoginForm;
-    window.store.showToast('Logged out successfully');
-    window.store.displayProducts();
-    window.store.displayCategories();
+    showToast('Logged out successfully');
+    displayCategories();
+    displayProducts();
 }
 
 function showLoginForm() {
@@ -52,252 +79,136 @@ function hideLoginForm() {
     document.getElementById('loginForm').reset();
 }
 
-// Product Management
-function addProduct(event) {
-    event.preventDefault(); // Prevent form submission
-    
-    const name = document.getElementById('productName').value.trim();
-    const price = document.getElementById('productPrice').value.trim();
-    const description = document.getElementById('productDescription').value.trim();
-    const category = document.getElementById('productCategory').value.trim();
-    const image = document.getElementById('productImage').value.trim();
-    const offer = document.getElementById('productOffer').value.trim();
-
-    if (!category) {
-        showToast('Please select a category');
-        return;
-    }
-
-    if (!name || !price || !description || !image) {
-        showToast('Please fill in all required fields');
-        return;
-    }
-
-    const products = JSON.parse(localStorage.getItem('products')) || [];
-    const newProduct = {
-        id: Date.now(),
-        name,
-        price,
-        description,
-        category,
-        image,
-        offer
-    };
-
-    products.push(newProduct);
-    localStorage.setItem('products', JSON.stringify(products));
-    
-    // Reset the form
-    document.getElementById('productName').value = '';
-    document.getElementById('productPrice').value = '';
-    document.getElementById('productDescription').value = '';
-    document.getElementById('productCategory').value = '';
-    document.getElementById('productImage').value = '';
-    document.getElementById('productOffer').value = '';
-
-    // Update displays
-    displayProducts();
-    showToast('Product added successfully!');
-}
-
-function deleteProduct(id) {
-    if (confirm('Are you sure you want to delete this product?')) {
-        let products = JSON.parse(localStorage.getItem('products')) || [];
-        products = products.filter(product => product.id !== id);
-        localStorage.setItem('products', JSON.stringify(products));
-        displayProducts();
-        showToast('Product deleted successfully!');
-    }
-}
-
-function editProduct(id) {
-    const products = JSON.parse(localStorage.getItem('products')) || [];
-    const product = products.find(p => p.id === id);
-    
-    if (!product) {
-        showToast('Product not found!');
-        return;
-    }
-
-    // Fill the edit form with product details
-    document.getElementById('editProductId').value = product.id;
-    document.getElementById('editProductName').value = product.name;
-    document.getElementById('editProductPrice').value = product.price;
-    document.getElementById('editProductDescription').value = product.description;
-    document.getElementById('editProductCategory').value = product.category;
-    document.getElementById('editProductImage').value = product.image;
-    document.getElementById('editProductOffer').value = product.offer || '';
-
-    // Update category options in edit form
-    updateCategoryOptions('editProductCategory');
-
-    // Show edit modal
-    document.getElementById('editProductModal').style.display = 'block';
-}
-
-function updateProduct(event) {
-    event.preventDefault(); // Prevent form submission
-
-    const id = parseInt(document.getElementById('editProductId').value);
-    const products = JSON.parse(localStorage.getItem('products')) || [];
-    const index = products.findIndex(p => p.id === id);
-
-    if (index === -1) {
-        showToast('Product not found!');
-        return;
-    }
-
-    products[index] = {
-        id,
-        name: document.getElementById('editProductName').value.trim(),
-        price: document.getElementById('editProductPrice').value.trim(),
-        description: document.getElementById('editProductDescription').value.trim(),
-        category: document.getElementById('editProductCategory').value.trim(),
-        image: document.getElementById('editProductImage').value.trim(),
-        offer: document.getElementById('editProductOffer').value.trim()
-    };
-
-    localStorage.setItem('products', JSON.stringify(products));
-    document.getElementById('editProductModal').style.display = 'none';
-    displayProducts();
-    showToast('Product updated successfully!');
-}
-
 // Category Management
-function addCategory(event) {
-    event.preventDefault(); // Prevent form submission
+function addCategory() {
+    if (!isAdmin()) {
+        showToast('Please login as admin');
+        return;
+    }
     
-    const categoryName = document.getElementById('categoryName').value.trim();
+    const categoryInput = document.getElementById('categoryName');
+    const categoryName = categoryInput.value.trim();
     
     if (!categoryName) {
         showToast('Please enter a category name');
         return;
     }
-
-    const categories = JSON.parse(localStorage.getItem('categories')) || [];
     
     if (categories.includes(categoryName)) {
-        showToast('Category already exists!');
+        showToast('Category already exists');
         return;
     }
-
+    
     categories.push(categoryName);
-    localStorage.setItem('categories', JSON.stringify(categories));
-    
-    // Reset form
-    document.getElementById('categoryName').value = '';
-    
-    // Update displays
+    categoryInput.value = '';
+    showToast('Category added successfully');
     displayCategories();
-    updateCategoryOptions('productCategory');
-    updateCategoryOptions('editProductCategory');
-    showToast('Category added successfully!');
+    updateCategoryOptions();
 }
 
 function deleteCategory(category) {
-    if (confirm('Are you sure you want to delete this category? All products in this category will be affected.')) {
-        let categories = JSON.parse(localStorage.getItem('categories')) || [];
-        categories = categories.filter(c => c !== category);
-        localStorage.setItem('categories', JSON.stringify(categories));
-        
-        // Update products that were in this category
-        let products = JSON.parse(localStorage.getItem('products')) || [];
-        products = products.map(p => {
-            if (p.category === category) {
-                p.category = 'Uncategorized';
-            }
-            return p;
-        });
-        localStorage.setItem('products', JSON.stringify(products));
-        
-        // Update displays
-        displayCategories();
-        displayProducts();
-        updateCategoryOptions('productCategory');
-        updateCategoryOptions('editProductCategory');
-        showToast('Category deleted successfully!');
-    }
-}
-
-// Display Functions
-function displayProducts(category = null) {
-    const products = JSON.parse(localStorage.getItem('products')) || [];
-    const productsGrid = document.querySelector('.products-grid');
-    productsGrid.innerHTML = '';
-
-    const filteredProducts = category ? 
-        products.filter(p => p.category === category) : 
-        products;
-
-    if (filteredProducts.length === 0) {
-        productsGrid.innerHTML = '<div class="no-results">No products found</div>';
+    if (!isAdmin()) {
+        showToast('Please login as admin');
         return;
     }
 
-    filteredProducts.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.innerHTML = `
-            <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
-            <h3>${product.name}</h3>
-            <p class="price">৳${product.price}</p>
-            ${product.offer ? `<p class="offer">${product.offer}</p>` : ''}
-            <p>${product.description}</p>
-            <button class="call-order-btn" onclick="callToOrder('${product.name}')">
-                <i class="fas fa-phone"></i> Call to Order
-            </button>
-            ${sessionStorage.getItem('isAdmin') === 'true' ? `
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button onclick="editProduct(${product.id})" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button onclick="deleteProduct(${product.id})" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
+    if (!confirm('Are you sure you want to delete this category?')) {
+        return;
+    }
+    
+    categories = categories.filter(c => c !== category);
+    products = products.map(p => {
+        if (p.category === category) {
+            p.category = '';
+        }
+        return p;
+    });
+    
+    showToast('Category deleted successfully');
+    displayCategories();
+    updateCategoryOptions();
+    displayProducts();
+}
+
+// Product Management
+function addProduct() {
+    if (!isAdmin()) {
+        showToast('Please login as admin');
+        return;
+    }
+
+    const name = document.getElementById('productName').value.trim();
+    const price = document.getElementById('productPrice').value;
+    const category = document.getElementById('productCategory').value;
+    const image = document.getElementById('productImage').value.trim() || `https://via.placeholder.com/300x200?text=${encodeURIComponent(name)}`;
+    const offer = document.getElementById('productOffer').value.trim();
+    
+    if (!name || !price || !category) {
+        showToast('Please fill all required fields');
+        return;
+    }
+    
+    const product = {
+        id: Date.now(),
+        name,
+        price: parseFloat(price),
+        category,
+        image,
+        offer
+    };
+    
+    products.push(product);
+    
+    // Clear form
+    document.getElementById('productName').value = '';
+    document.getElementById('productPrice').value = '';
+    document.getElementById('productCategory').value = '';
+    document.getElementById('productImage').value = '';
+    document.getElementById('productOffer').value = '';
+    
+    showToast('Product added successfully');
+    displayProducts();
+}
+
+function deleteProduct(id) {
+    if (!isAdmin()) {
+        showToast('Please login as admin');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this product?')) {
+        return;
+    }
+    
+    products = products.filter(p => p.id !== id);
+    showToast('Product deleted successfully');
+    displayProducts();
+}
+
+// Display Functions
+function displayCategories() {
+    const categoryList = document.getElementById('categoryList');
+    categoryList.innerHTML = '<button class="category-btn active" onclick="displayProducts()">All Products</button>';
+    
+    categories.forEach(category => {
+        const div = document.createElement('div');
+        div.className = 'category-container';
+        div.innerHTML = `
+            <button class="category-btn" onclick="displayProducts('${category}')">${category}</button>
+            ${isAdmin() ? `
+                <button class="btn btn-danger btn-small" onclick="deleteCategory('${category}')">
+                    <i class="fas fa-times"></i>
+                </button>
             ` : ''}
         `;
-        productsGrid.appendChild(productCard);
+        categoryList.appendChild(div);
     });
 }
 
-function displayCategories() {
-    const categories = JSON.parse(localStorage.getItem('categories')) || [];
-    const categoriesContainer = document.querySelector('.categories');
-    
-    if (!categoriesContainer) return;
-
-    categoriesContainer.innerHTML = `
-        <button class="category-btn active" onclick="displayProducts(null)">All Products</button>
-        ${categories.map(category => `
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <button class="category-btn" onclick="displayProducts('${category}')">${category}</button>
-                ${sessionStorage.getItem('isAdmin') === 'true' ? 
-                    `<button onclick="deleteCategory('${category}')" class="btn btn-danger" style="padding: 0.3rem 0.6rem;">
-                        <i class="fas fa-times"></i>
-                    </button>` : 
-                    ''}
-            </div>
-        `).join('')}
-    `;
-
-    // Add click handler for category buttons
-    const categoryButtons = categoriesContainer.querySelectorAll('.category-btn');
-    categoryButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            categoryButtons.forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-}
-
-function updateCategoryOptions(selectId) {
-    const categories = JSON.parse(localStorage.getItem('categories')) || [];
-    const select = document.getElementById(selectId);
-    
-    if (!select) return;
-
+function updateCategoryOptions() {
+    const select = document.getElementById('productCategory');
     select.innerHTML = '<option value="">Select Category</option>';
+    
     categories.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
@@ -306,66 +217,68 @@ function updateCategoryOptions(selectId) {
     });
 }
 
-// Search functionality
-function searchProducts() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const products = JSON.parse(localStorage.getItem('products')) || [];
+function displayProducts(filterCategory = null) {
+    const productList = document.getElementById('productList');
+    productList.innerHTML = '';
     
-    const filteredProducts = products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm) || 
-        product.description.toLowerCase().includes(searchTerm) ||
-        product.category.toLowerCase().includes(searchTerm)
-    );
-
-    displayFilteredProducts(filteredProducts);
-}
-
-function displayFilteredProducts(products) {
-    const productsGrid = document.querySelector('.products-grid');
-    productsGrid.innerHTML = '';
-
-    if (products.length === 0) {
-        productsGrid.innerHTML = '<div class="no-results">No products found</div>';
+    let filteredProducts = products;
+    if (filterCategory) {
+        filteredProducts = products.filter(p => p.category === filterCategory);
+    }
+    
+    if (filteredProducts.length === 0) {
+        productList.innerHTML = '<div class="no-products">No products found</div>';
         return;
     }
-
-    products.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.innerHTML = `
-            <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
-            <h3>${product.name}</h3>
-            <p class="price">৳${product.price}</p>
-            ${product.offer ? `<p class="offer">${product.offer}</p>` : ''}
-            <p>${product.description}</p>
-            <button class="call-order-btn" onclick="callToOrder('${product.name}')">
-                <i class="fas fa-phone"></i> Call to Order
-            </button>
-            ${sessionStorage.getItem('isAdmin') === 'true' ? `
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button onclick="editProduct(${product.id})" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button onclick="deleteProduct(${product.id})" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-            ` : ''}
+    
+    filteredProducts.forEach(product => {
+        const div = document.createElement('div');
+        div.className = 'product-card';
+        div.innerHTML = `
+            <div class="product-image-container">
+                <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/300x200?text=${encodeURIComponent(product.name)}'">
+                ${product.offer ? `<div class="offer-badge">${product.offer}</div>` : ''}
+            </div>
+            <div class="product-info">
+                <h3 class="product-name">${product.name}</h3>
+                <div class="product-price">৳${product.price}</div>
+                <div class="product-category">${product.category}</div>
+                <button class="btn btn-primary call-btn" onclick="callToOrder('${product.name}')">
+                    <i class="fas fa-phone"></i> Call to Order
+                </button>
+                ${isAdmin() ? `
+                    <div class="admin-buttons">
+                        <button class="btn btn-danger" onclick="deleteProduct(${product.id})">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
         `;
-        productsGrid.appendChild(productCard);
+        productList.appendChild(div);
     });
 }
 
-// Call to Order functionality
-function callToOrder(productName) {
-    window.location.href = `tel:${STORE_PHONE}`;
+// Search functionality
+function searchProducts(query) {
+    const searchTerm = query.toLowerCase();
+    const filteredProducts = products.filter(product => 
+        product.name.toLowerCase().includes(searchTerm) ||
+        product.category.toLowerCase().includes(searchTerm)
+    );
+    displayFilteredProducts(filteredProducts);
 }
 
-// UI Helper functions
-function showToast(message) {
-    const toast = document.querySelector('.toast');
-    if (!toast) return;
+function displayFilteredProducts(filteredProducts) {
+    displayProducts();
+    if (filteredProducts.length === 0) {
+        document.getElementById('productList').innerHTML = '<div class="no-products">No products found</div>';
+    }
+}
 
+// Utility Functions
+function showToast(message) {
+    const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.style.display = 'block';
     setTimeout(() => {
@@ -373,27 +286,32 @@ function showToast(message) {
     }, 3000);
 }
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    // Set up login button
-    const loginBtn = document.getElementById('loginBtn');
-    if (sessionStorage.getItem('isAdmin') === 'true') {
+function isAdmin() {
+    return sessionStorage.getItem('isAdmin') === 'true';
+}
+
+function callToOrder(productName) {
+    window.location.href = `tel:${STORE_PHONE}`;
+}
+
+// Initialize the app
+document.addEventListener('DOMContentLoaded', () => {
+    // Check admin status
+    if (isAdmin()) {
         document.querySelector('.admin-panel').style.display = 'block';
-        loginBtn.textContent = 'Logout';
-        loginBtn.onclick = logout;
+        document.getElementById('loginBtn').textContent = 'Logout';
+        document.getElementById('loginBtn').onclick = logout;
     } else {
         document.querySelector('.admin-panel').style.display = 'none';
-        loginBtn.textContent = 'Admin Login';
-        loginBtn.onclick = showLoginForm;
+        document.getElementById('loginBtn').textContent = 'Admin Login';
+        document.getElementById('loginBtn').onclick = showLoginForm;
     }
-
-    // Set up login form
-    document.getElementById('loginForm').onsubmit = login;
-
-    // Initialize store display
-    if (window.store) {
-        window.store.displayProducts();
-        window.store.displayCategories();
-        window.store.updateCategoryOptions();
-    }
+    
+    // Initialize form submit handler
+    document.getElementById('loginForm').addEventListener('submit', login);
+    
+    displayCategories();
+    updateCategoryOptions();
+    displayProducts();
 });
+
